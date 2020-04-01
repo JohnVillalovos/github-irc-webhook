@@ -3,6 +3,7 @@ import socket
 import sys
 import threading
 import time
+from typing import List, Optional
 
 import irccolors
 
@@ -19,7 +20,7 @@ ansi_colors = {
 }
 
 
-def colorize(line, color):
+def colorize(line: str, color: str) -> str:
     if not sys.stdout.isatty():
         return line
 
@@ -27,23 +28,23 @@ def colorize(line, color):
 
 
 class IrcConnection:
-    def __init__(self, server, channel, nick, passw, port):
+    def __init__(self, server: str, channel: str, nick: str, passw: str, port: int):
         self.server = server
         self.channel = channel
         self.nick = nick
         self.passw = passw
         self.port = port
 
-        self.connection = None
+        self.connection: Optional[socket.socket] = None
         self.buffer = ""
-        self.last_pong = 0
+        self.last_pong = 0.0
         self.await_pong = False
 
-        self.queue = []
+        self.queue: List[str] = []
         self.lock = threading.Lock()
         self.quit_loop = False
 
-    def connect_server(self):
+    def connect_server(self) -> None:
         print(colorize("Connecting to {}:{}".format(self.server, self.port), "brown"))
 
         while not self.connection:
@@ -78,24 +79,25 @@ class IrcConnection:
             irccolors.colorize("IRC bot initialized successfully", "green")
         )
 
-    def reconnect(self):
-        self.connection.shutdown(2)
-        self.connection.close()
+    def reconnect(self) -> None:
+        if self.connection is not None:
+            self.connection.shutdown(2)
+            self.connection.close()
         self.connection = None
         self.connect_server()
 
-    def try_ping(self):
+    def try_ping(self) -> None:
         self.post_string("PING {}\n".format(self.server))
         self.await_pong = True
 
-    def schedule_message(self, message):
+    def schedule_message(self, message: str) -> None:
         self.lock.acquire()
         try:
             self.queue.append(message)
         finally:
             self.lock.release()
 
-    def process_line(self, line):
+    def process_line(self, line: str) -> None:
         if line.find("PING") != -1:
             self.post_string("PONG " + line.split()[1] + "\n")
 
@@ -107,7 +109,9 @@ class IrcConnection:
             print("{}: {}".format(colorize(self.server, "green"), line))
 
     # Receive bytes from input, and process each new line which was received
-    def process_input(self):
+    def process_input(self) -> None:
+        if self.connection is None:
+            return
         data = self.connection.recv(4096)
         if not data or data == b"":
             return
@@ -126,17 +130,18 @@ class IrcConnection:
         # Next time append to the last line which is still incomplete
         self.buffer = lines[-1]
 
-    def post_string(self, message):
+    def post_string(self, message: str) -> None:
         print(colorize(self.nick + "> " + message[:-1], "blue"))
-        self.connection.send(bytes(message, "utf-8"))
+        if self.connection is not None:
+            self.connection.send(bytes(message, "utf-8"))
 
-    def send_message(self, message):
+    def send_message(self, message: str) -> None:
         self.post_string("NOTICE " + self.channel + " :" + message + "\n")
 
-    def stop_loop(self):
+    def stop_loop(self) -> None:
         self.quit_loop = True
 
-    def loop(self):
+    def loop(self) -> None:
         self.connect_server()  # Initial connection attempt
         k = 0
         while not self.quit_loop:
@@ -156,7 +161,7 @@ class IrcConnection:
                 continue
 
             if to_read:
-                r = self.process_input()
+                self.process_input()
 
             self.lock.acquire()
             try:
@@ -166,5 +171,7 @@ class IrcConnection:
             finally:
                 self.lock.release()
 
-    def __del__(self):
-        self.connection.close()
+    def __del__(self) -> None:
+        if self.connection is not None:
+            self.connection.close()
+            self.connection = None

@@ -1,3 +1,5 @@
+from typing import List
+
 # Attributes of the server this bot will run on
 SERVER_HOST = ""
 SERVER_PORT = 8888
@@ -15,7 +17,7 @@ IRC_PASS = ""
 IRC_PORT = 6667
 
 # a dictionary of branches push-related events should be enabled for, or empty if all are enabled
-GH_PUSH_ENABLED_BRANCHES = (
+GH_PUSH_ENABLED_BRANCHES: List[str] = (
     []
 )  # for example, ['master', 'testing', 'author/repo:branch']
 

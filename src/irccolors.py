@@ -18,7 +18,7 @@ color_codes = {
 }
 
 
-def color_modifier(color):
+def color_modifier(color: str) -> str:
     if color == "reset":
         return "\x0F"
 
@@ -35,5 +35,5 @@ def color_modifier(color):
     return fmt
 
 
-def colorize(msg, color):
+def colorize(msg: str, color: str) -> str:
     return color_modifier(color) + msg + color_modifier("reset")

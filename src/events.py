@@ -1,17 +1,19 @@
 import requests
 import subprocess
+from typing import Any, Dict, List
 
 import config
+from irc import IrcConnection
 import irccolors
 
 
-def fmt_repo(data):
+def fmt_repo(data: Dict[str, Any]) -> str:
     repo = "[" + data["repository"]["full_name"] + "]"
     return irccolors.colorize(repo, "royal")
 
 
 # Use git.io to get a shortened link for commit names, etc. which are too long
-def short_gh_link(link):
+def short_gh_link(link: str) -> str:
     conn = requests.post("https://git.io", data={"url": link})
     return conn.headers["Location"]
 
@@ -20,7 +22,7 @@ MAX_COMMIT_LOG_LEN = 5
 MAX_COMMIT_LEN = 70
 
 
-def fmt_commit(cmt):
+def fmt_commit(cmt: Dict[str, Any]) -> str:
     hsh = irccolors.colorize(cmt["id"][:10], "teal")
     author = irccolors.colorize(cmt["author"]["name"], "bold-green")
     message = cmt["message"]
@@ -29,7 +31,7 @@ def fmt_commit(cmt):
     return "{} {}: {}".format(hsh, author, message)
 
 
-def fmt_last_commits(data):
+def fmt_last_commits(data: Dict[str, Any]) -> List[str]:
     commits = list(map(fmt_commit, data["commits"]))
 
     # make sure the commit list isn't too long
@@ -47,11 +49,11 @@ def fmt_last_commits(data):
         return commits[slice(0, last_shown)] + [last_line]
 
 
-def get_branch_name_from_push_event(data):
+def get_branch_name_from_push_event(data: Dict[str, Any]) -> str:
     return data["ref"].split("/")[-1]
 
 
-def handle_force_push(irc, data):
+def handle_force_push(irc: IrcConnection, data: Dict[str, Any]) -> None:
     author = irccolors.colorize(data["pusher"]["name"], "bold")
 
     before = irccolors.colorize(data["before"][:10], "bold-red")
@@ -78,13 +80,13 @@ def handle_force_push(irc, data):
     print("Force push event")
 
 
-def handle_forward_push(irc, data):
+def handle_forward_push(irc: IrcConnection, data: Dict[str, Any]) -> None:
     author = irccolors.colorize(data["pusher"]["name"], "bold")
 
     num_commits = len(data["commits"])
-    num_commits = str(num_commits) + " commit" + ("s" if num_commits > 1 else "")
+    num_commits_str = str(num_commits) + " commit" + ("s" if num_commits > 1 else "")
 
-    num_commits = irccolors.colorize(num_commits, "bold-teal")
+    num_commits_str = irccolors.colorize(num_commits_str, "bold-teal")
 
     branch = get_branch_name_from_push_event(data)
     branch = irccolors.colorize(branch, "bold-blue")
@@ -102,7 +104,7 @@ def handle_forward_push(irc, data):
     print("Push event")
 
 
-def handle_delete_branch(irc, data):
+def handle_delete_branch(irc: IrcConnection, data: Dict[str, Any]) -> None:
     author = irccolors.colorize(data["pusher"]["name"], "bold")
     action = irccolors.colorize("deleted", "red")
 
@@ -112,7 +114,7 @@ def handle_delete_branch(irc, data):
     irc.schedule_message("{} {} {} {}".format(fmt_repo(data), author, action, branch))
 
 
-def handle_push_event(irc, data):
+def handle_push_event(irc: IrcConnection, data: Dict[str, Any]) -> None:
     if config.GH_PUSH_ENABLED_BRANCHES:
         branch = get_branch_name_from_push_event(data)
         repo = data["repository"]["full_name"]
@@ -129,7 +131,7 @@ def handle_push_event(irc, data):
         handle_forward_push(irc, data)
 
 
-def fmt_pr_action(action, merged):
+def fmt_pr_action(action: str, merged: bool) -> str:
     if action == "opened" or action == "reopened":
         action = irccolors.colorize(action, "green")
     elif action == "closed":
@@ -143,7 +145,7 @@ def fmt_pr_action(action, merged):
     return action
 
 
-def handle_pull_request(irc, data):
+def handle_pull_request(irc: IrcConnection, data: Dict[str, Any]) -> None:
     repo = fmt_repo(data)
     author = irccolors.colorize(data["sender"]["login"], "bold")
     if not data["action"] in config.GH_PR_ENABLED_EVENTS:
@@ -161,7 +163,7 @@ def handle_pull_request(irc, data):
     )
 
 
-def handle_issue(irc, data):
+def handle_issue(irc: IrcConnection, data: Dict[str, Any]) -> None:
     repo = fmt_repo(data)
     user = irccolors.colorize(data["sender"]["login"], "bold")
 
@@ -180,11 +182,11 @@ def handle_issue(irc, data):
     )
 
 
-def handle_ping_event(irc, data):
+def handle_ping_event(irc: IrcConnection, data: Dict[str, Any]) -> None:
     print("Ping event")
 
 
-def handle_event(irc, event, data):
+def handle_event(irc: IrcConnection, event: str, data: Dict[str, Any]) -> None:
     if event == "ping":
         handle_ping_event(irc, data)
     elif event == "push":

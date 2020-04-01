@@ -2,12 +2,13 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 import json
 import sys
 import threading
+from typing import Optional
 
 import config
 import events
 from irc import IrcConnection
 
-irc = None
+irc: Optional[IrcConnection] = None
 
 # handle POST events from github server
 # We should also make sure to ignore requests from the IRC, which can clutter
@@ -18,13 +19,13 @@ EVENT_TYPE = "x-github-event"
 
 
 class MyHandler(BaseHTTPRequestHandler):
-    def do_GET(self):
+    def do_GET(self) -> None:
         pass
 
-    def do_CONNECT(self):
+    def do_CONNECT(self) -> None:
         pass
 
-    def do_POST(self):
+    def do_POST(self) -> None:
         if not all(x in self.headers for x in [CONTENT_TYPE, CONTENT_LEN, EVENT_TYPE]):
             return
         content_type = self.headers["content-type"]
@@ -44,13 +45,14 @@ class MyHandler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(bytes("OK", "utf-8"))
 
-        events.handle_event(irc, event_type, json.loads(data))
-        return
+        if irc is not None:
+            events.handle_event(irc, event_type, json.loads(data))
 
 
 # Just run IRC connection event loop
-def worker():
-    irc.loop()
+def worker() -> None:
+    if irc is not None:
+        irc.loop()
 
 
 irc = IrcConnection(
