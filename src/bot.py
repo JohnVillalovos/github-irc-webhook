@@ -1,9 +1,10 @@
 from http.server import BaseHTTPRequestHandler, HTTPServer
 import json
-import events
 import sys
 import threading
+
 import config
+import events
 from irc import IrcConnection
 
 irc = None

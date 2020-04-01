@@ -1,7 +1,8 @@
-import irccolors
-import subprocess
 import requests
+import subprocess
+
 import config
+import irccolors
 
 
 def fmt_repo(data):

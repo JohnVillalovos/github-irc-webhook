@@ -1,9 +1,11 @@
 import select
-import time
-import sys
-import irccolors
 import socket
+import sys
 import threading
+import time
+
+import irccolors
+
 
 PING_INTERVAL = 30
 PING_TIMEOUT = PING_INTERVAL + 30  # Must be PING_INTERVAL + actual ping timeout
